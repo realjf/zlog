@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/11 12:45:25                                        #
+// # Last Modified: 2024/11/11 12:48:42                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -134,9 +134,9 @@ func newZLogWithFile(config *ZLogConfig, options ...zap.Option) (logger *zap.Log
 	if config.MaxSize <= 0 {
 		config.MaxSize = logMaxSize
 	}
-	filename := filepath.Base(config.LogFile)
+	// filename := filepath.Base(config.LogFile)
 	hook := lumberjack.Logger{
-		Filename:  filename,
+		Filename:  config.LogFile,
 		MaxSize:   config.MaxSize,
 		MaxAge:    config.MaxAge,
 		Compress:  config.Compress,
