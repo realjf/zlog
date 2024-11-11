@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 17:54:07                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/10/08 18:12:31                                        #
+// # Last Modified: 2024/11/11 12:43:29                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -22,9 +22,17 @@ import (
 func GetCurrentDirectory() string {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		fmt.Errorf("%v", err.Error())
+		fmt.Printf("%v\n", err.Error())
 	}
 	return strings.Replace(dir, "\\", "/", -1)
+}
+
+func Abs(dir string) string {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		fmt.Printf("%v\n", err.Error())
+	}
+	return dir
 }
 
 // 判断文件路径是否存在

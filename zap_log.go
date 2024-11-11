@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/11 11:22:11                                        #
+// # Last Modified: 2024/11/11 12:45:25                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -85,6 +85,12 @@ type zLog struct {
 
 func newZLog(config *ZLogConfig, options ...zap.Option) *zLog {
 	var logger *zap.Logger
+
+	var err error
+	config.LogFile, err = filepath.Abs(config.LogFile)
+	if err != nil {
+		log.Panicf("获取日志文件绝对路径失败：%v\n", err.Error())
+	}
 
 	if config.LogMode == logModeFile {
 		dir := filepath.Dir(config.LogFile)
