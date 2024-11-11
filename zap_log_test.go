@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 18:04:40                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/11 11:19:27                                        #
+// # Last Modified: 2024/11/11 12:51:36                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -22,7 +22,7 @@ func TestZapLog(t *testing.T) {
 		Compress: true,
 		LogMode:  "file",
 		Encoding: "json",
-		LogFile:  "./zlog.log",
+		LogFile:  "./logs/zlog.log",
 	})
 	zlog.ZLog().Infof("hello %s", "realjf")
 }
