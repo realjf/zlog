@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/12 12:24:09                                        #
+// # Last Modified: 2024/11/12 12:54:36                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -14,6 +14,7 @@ package zlog
 import (
 	"log"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -94,11 +95,9 @@ func newZLog(config *ZLogConfig, options ...zap.Option) *zLog {
 		log.Panicf("获取日志文件绝对路径失败：%v\n", err.Error())
 	}
 
-	if config.LogMode == logModeFile {
-		dir := filepath.Dir(config.LogFile)
-		if err := fileutil.MkdirIfNecessary(dir); err != nil {
-			log.Panicf("创建日志目录[%s]失败：%+v\n", dir, errors.WithStack(err))
-		}
+	if strings.Contains(config.LogMode, logModeFile) && strings.Contains(config.LogMode, logModeStdout) {
+		logger = newZLogWithFileAndConsole(config, options...)
+	} else if config.LogMode == logModeFile {
 		logger = newZLogWithFile(config, options...)
 	} else {
 		logger = newZLogWithConsole(config, options...)
@@ -130,6 +129,16 @@ func newZLogWithConsole(config *ZLogConfig, options ...zap.Option) (logger *zap.
 }
 
 func newZLogWithFile(config *ZLogConfig, options ...zap.Option) (logger *zap.Logger) {
+	core := newFileCore(config, options...)
+	logger = zap.New(core)
+	return
+}
+
+func newFileCore(config *ZLogConfig, options ...zap.Option) zapcore.Core {
+	dir := filepath.Dir(config.LogFile)
+	if err := fileutil.MkdirIfNecessary(dir); err != nil {
+		log.Panicf("创建日志目录[%s]失败：%+v\n", dir, errors.WithStack(err))
+	}
 	if config.MaxAge <= 0 {
 		config.MaxAge = logMaxAge
 	}
@@ -151,6 +160,14 @@ func newZLogWithFile(config *ZLogConfig, options ...zap.Option) (logger *zap.Log
 		encoder = zapcore.NewConsoleEncoder(newEncoderConfig())
 	}
 	core := zapcore.NewCore(encoder, zapcore.AddSync(&hook), config.Level.toZapLevel())
+	return core
+}
+
+func newZLogWithFileAndConsole(config *ZLogConfig, options ...zap.Option) (logger *zap.Logger) {
+	consoleCore := newZLogWithConsole(config, options...)
+	fileCore := newFileCore(config, options...)
+
+	core := zapcore.NewTee(consoleCore.Core(), fileCore)
 	logger = zap.New(core)
 	return
 }

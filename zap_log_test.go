@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 18:04:40                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/11 12:51:36                                        #
+// # Last Modified: 2024/11/12 12:55:31                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -20,7 +20,7 @@ import (
 func TestZapLog(t *testing.T) {
 	zlog.InitZLog(&zlog.ZLogConfig{
 		Compress: true,
-		LogMode:  "file",
+		LogMode:  "file|console",
 		Encoding: "json",
 		LogFile:  "./logs/zlog.log",
 	})
