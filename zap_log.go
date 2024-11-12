@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/11 12:48:42                                        #
+// # Last Modified: 2024/11/12 12:24:09                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -44,6 +44,8 @@ type IZLog interface {
 	Errorf(template string, args ...interface{})
 	Fatal(msg string, fields ...zapcore.Field)
 	Fatalf(template string, args ...interface{})
+
+	GetZCore() *zap.Logger
 }
 
 var localZLog *zLog
@@ -193,6 +195,10 @@ func (z *zLog) Fatal(msg string, fields ...zapcore.Field) {
 
 func (z *zLog) Fatalf(template string, args ...interface{}) {
 	z.logger.Sugar().Fatalf(template, args...)
+}
+
+func (z *zLog) GetZCore() *zap.Logger {
+	return z.logger
 }
 
 // =========================================================== 私有方法 ===========================================================
