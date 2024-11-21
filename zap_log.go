@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/12 12:54:36                                        #
+// # Last Modified: 2024/11/21 17:50:31                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -12,6 +12,7 @@
 package zlog
 
 import (
+	"context"
 	"log"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,17 @@ type IZLog interface {
 	Errorf(template string, args ...interface{})
 	Fatal(msg string, fields ...zapcore.Field)
 	Fatalf(template string, args ...interface{})
+
+	DebugWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
+	DebugfWithTrace(ctx context.Context, template string, args ...interface{})
+	InfoWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
+	InfofWithTrace(ctx context.Context, template string, args ...interface{})
+	WarnWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
+	WarnfWithTrace(ctx context.Context, template string, args ...interface{})
+	ErrorWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
+	ErrorfWithTrace(ctx context.Context, template string, args ...interface{})
+	FatalWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
+	FatalfWithTrace(ctx context.Context, template string, args ...interface{})
 
 	GetZCore() *zap.Logger
 }
@@ -81,7 +93,9 @@ type ZLogConfig struct {
 }
 
 type zLog struct {
-	logger *zap.Logger
+	logger  *zap.Logger
+	cfg     *ZLogConfig
+	options []zap.Option
 }
 
 // =========================================================== 构造方法 ===========================================================
@@ -104,7 +118,9 @@ func newZLog(config *ZLogConfig, options ...zap.Option) *zLog {
 	}
 
 	return &zLog{
-		logger: logger,
+		logger:  logger,
+		cfg:     config,
+		options: options,
 	}
 }
 
@@ -211,6 +227,98 @@ func (z *zLog) Fatal(msg string, fields ...zapcore.Field) {
 }
 
 func (z *zLog) Fatalf(template string, args ...interface{}) {
+	z.logger.Sugar().Fatalf(template, args...)
+}
+
+// =========================================================== 带链路追踪的接口方法 ===========================================================
+
+func (z *zLog) DebugWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Debug(msg, fields...)
+		return
+	}
+	z.logger.Debug(msg, fields...)
+}
+
+func (z *zLog) DebugfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Sugar().Debugf(template, args...)
+		return
+	}
+	z.logger.Sugar().Debugf(template, args...)
+}
+
+func (z *zLog) InfoWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Info(msg, fields...)
+		return
+	}
+	z.logger.Info(msg, fields...)
+}
+
+func (z *zLog) InfofWithTrace(ctx context.Context, template string, args ...interface{}) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Sugar().Infof(template, args...)
+		return
+	}
+	z.logger.Sugar().Infof(template, args...)
+}
+
+func (z *zLog) WarnWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Warn(msg, fields...)
+		return
+	}
+	z.logger.Warn(msg, fields...)
+}
+
+func (z *zLog) WarnfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Sugar().Warnf(template, args...)
+		return
+	}
+	z.logger.Sugar().Warnf(template, args...)
+}
+
+func (z *zLog) ErrorWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Error(msg, fields...)
+		return
+	}
+	z.logger.Error(msg, fields...)
+}
+
+func (z *zLog) ErrorfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Sugar().Errorf(template, args...)
+		return
+	}
+	z.logger.Sugar().Errorf(template, args...)
+}
+
+func (z *zLog) FatalWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Fatal(msg, fields...)
+		return
+	}
+	z.logger.Fatal(msg, fields...)
+}
+
+func (z *zLog) FatalfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	opt := WithTrace(ctx)
+	if nz, err := opt(z); err == nil {
+		nz.logger.Sugar().Fatalf(template, args...)
+		return
+	}
 	z.logger.Sugar().Fatalf(template, args...)
 }
 
