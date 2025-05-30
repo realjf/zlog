@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/21 17:50:31                                        #
+// # Last Modified: 2025/05/30 09:51:51                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -58,6 +58,8 @@ type IZLog interface {
 	FatalWithTrace(ctx context.Context, msg string, fields ...zapcore.Field)
 	FatalfWithTrace(ctx context.Context, template string, args ...interface{})
 
+	WithPrefix(prefix string) IZLog
+
 	GetZCore() *zap.Logger
 }
 
@@ -96,6 +98,8 @@ type zLog struct {
 	logger  *zap.Logger
 	cfg     *ZLogConfig
 	options []zap.Option
+
+	prefix string
 }
 
 // =========================================================== 构造方法 ===========================================================
@@ -191,48 +195,49 @@ func newZLogWithFileAndConsole(config *ZLogConfig, options ...zap.Option) (logge
 // =========================================================== 接口方法 ===========================================================
 
 func (z *zLog) Debug(msg string, fields ...zapcore.Field) {
-	z.logger.Debug(msg, fields...)
+	z.logger.Debug(z.withPrefix(msg), fields...)
 }
 
 func (z *zLog) Debugf(template string, args ...interface{}) {
-	z.logger.Sugar().Debugf(template, args...)
+	z.logger.Sugar().Debugf(z.withPrefix(template), args...)
 }
 
 func (z *zLog) Info(msg string, fields ...zapcore.Field) {
-	z.logger.Info(msg, fields...)
+	z.logger.Info(z.withPrefix(msg), fields...)
 }
 
 func (z *zLog) Infof(template string, args ...interface{}) {
-	z.logger.Sugar().Infof(template, args...)
+	z.logger.Sugar().Infof(z.withPrefix(template), args...)
 }
 
 func (z *zLog) Warn(msg string, fields ...zapcore.Field) {
-	z.logger.Warn(msg, fields...)
+	z.logger.Warn(z.withPrefix(msg), fields...)
 }
 
 func (z *zLog) Warnf(template string, args ...interface{}) {
-	z.logger.Sugar().Warnf(template, args...)
+	z.logger.Sugar().Warnf(z.withPrefix(template), args...)
 }
 
 func (z *zLog) Error(msg string, fields ...zapcore.Field) {
-	z.logger.Error(msg, fields...)
+	z.logger.Error(z.withPrefix(msg), fields...)
 }
 
 func (z *zLog) Errorf(template string, args ...interface{}) {
-	z.logger.Sugar().Errorf(template, args...)
+	z.logger.Sugar().Errorf(z.withPrefix(template), args...)
 }
 
 func (z *zLog) Fatal(msg string, fields ...zapcore.Field) {
-	z.logger.Fatal(msg, fields...)
+	z.logger.Fatal(z.withPrefix(msg), fields...)
 }
 
 func (z *zLog) Fatalf(template string, args ...interface{}) {
-	z.logger.Sugar().Fatalf(template, args...)
+	z.logger.Sugar().Fatalf(z.withPrefix(template), args...)
 }
 
 // =========================================================== 带链路追踪的接口方法 ===========================================================
 
 func (z *zLog) DebugWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Debug(msg, fields...)
@@ -242,6 +247,7 @@ func (z *zLog) DebugWithTrace(ctx context.Context, msg string, fields ...zapcore
 }
 
 func (z *zLog) DebugfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Sugar().Debugf(template, args...)
@@ -251,6 +257,7 @@ func (z *zLog) DebugfWithTrace(ctx context.Context, template string, args ...int
 }
 
 func (z *zLog) InfoWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Info(msg, fields...)
@@ -260,6 +267,7 @@ func (z *zLog) InfoWithTrace(ctx context.Context, msg string, fields ...zapcore.
 }
 
 func (z *zLog) InfofWithTrace(ctx context.Context, template string, args ...interface{}) {
+	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Sugar().Infof(template, args...)
@@ -269,6 +277,7 @@ func (z *zLog) InfofWithTrace(ctx context.Context, template string, args ...inte
 }
 
 func (z *zLog) WarnWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Warn(msg, fields...)
@@ -278,6 +287,7 @@ func (z *zLog) WarnWithTrace(ctx context.Context, msg string, fields ...zapcore.
 }
 
 func (z *zLog) WarnfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Sugar().Warnf(template, args...)
@@ -287,6 +297,7 @@ func (z *zLog) WarnfWithTrace(ctx context.Context, template string, args ...inte
 }
 
 func (z *zLog) ErrorWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Error(msg, fields...)
@@ -296,6 +307,7 @@ func (z *zLog) ErrorWithTrace(ctx context.Context, msg string, fields ...zapcore
 }
 
 func (z *zLog) ErrorfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Sugar().Errorf(template, args...)
@@ -305,6 +317,7 @@ func (z *zLog) ErrorfWithTrace(ctx context.Context, template string, args ...int
 }
 
 func (z *zLog) FatalWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
+	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Fatal(msg, fields...)
@@ -314,6 +327,7 @@ func (z *zLog) FatalWithTrace(ctx context.Context, msg string, fields ...zapcore
 }
 
 func (z *zLog) FatalfWithTrace(ctx context.Context, template string, args ...interface{}) {
+	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
 		nz.logger.Sugar().Fatalf(template, args...)
@@ -326,7 +340,21 @@ func (z *zLog) GetZCore() *zap.Logger {
 	return z.logger
 }
 
+// =========================================================== 带前缀打印的接口方法 ===========================================================
+
+func (z *zLog) WithPrefix(prefix string) IZLog {
+	z.prefix = prefix
+	return z
+}
+
 // =========================================================== 私有方法 ===========================================================
+
+func (z *zLog) withPrefix(original string) string {
+	if z.prefix != "" {
+		original = z.prefix + " " + original
+	}
+	return original
+}
 
 func newEncoderConfig() zapcore.EncoderConfig {
 	encoderConfig := zap.NewProductionEncoderConfig()

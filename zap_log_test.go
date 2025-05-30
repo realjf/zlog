@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 18:04:40                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2024/11/21 17:51:10                                        #
+// # Last Modified: 2025/05/30 09:52:24                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -45,4 +45,14 @@ func TestZapLogWithTrace(t *testing.T) {
 
 	child2Ctx := trace.StartSpan(childCtx)
 	zlog.ZLog().InfofWithTrace(child2Ctx, "hello %s", "child2-realjf")
+}
+
+func TestWithPrefix(t *testing.T) {
+	zlog.InitZLog(&zlog.ZLogConfig{
+		Compress: true,
+		LogMode:  "file|console",
+		Encoding: "json",
+		LogFile:  "./logs/zlog.log",
+	})
+	zlog.ZLog().WithPrefix("[test]").Infof("hello %s", "realjf")
 }
