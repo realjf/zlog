@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/05/30 09:51:51                                        #
+// # Last Modified: 2025/05/30 10:03:01                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -103,6 +103,10 @@ type zLog struct {
 }
 
 // =========================================================== 构造方法 ===========================================================
+
+func NewZLog(config *ZLogConfig, options ...zap.Option) IZLog {
+	return newZLog(config, options...)
+}
 
 func newZLog(config *ZLogConfig, options ...zap.Option) *zLog {
 	var logger *zap.Logger
