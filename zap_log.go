@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/05/30 10:03:01                                        #
+// # Last Modified: 2025/06/05 01:01:55                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -16,6 +16,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -59,15 +60,18 @@ type IZLog interface {
 	FatalfWithTrace(ctx context.Context, template string, args ...interface{})
 
 	WithPrefix(prefix string) IZLog
+	WithName(name ...string) IZLog
 
-	GetZCore() *zap.Logger
+	GetZCore(name string) *zap.Logger
 }
 
 var localZLog *zLog
 
 func init() {
-	localZLog = newZLog(&ZLogConfig{
-		Compress: true,
+	localZLog = newZLog([]*ZLogConfig{
+		{
+			Compress: true,
+		},
 	})
 }
 
@@ -78,8 +82,8 @@ func ZLog() IZLog {
 	return localZLog
 }
 
-func InitZLog(config *ZLogConfig, options ...zap.Option) {
-	localZLog = newZLog(config, options...)
+func InitZLog(configs []*ZLogConfig, options ...zap.Option) {
+	localZLog = newZLog(configs, options...)
 }
 
 // =========================================================== 结构体 ===========================================================
@@ -92,43 +96,65 @@ type ZLogConfig struct {
 	Compress bool     `yaml:"compress"` // 是否启用压缩
 	Encoding string   `yaml:"encoding"` // 日志编码 console|json
 	LogFile  string   `yaml:"log_file"` // 日志文件路径
+	Name     string   `yaml:"name"`     // 日志名称
+	Default  bool     `yaml:"default"`  // 默认日志记录器
 }
 
 type zLog struct {
-	logger  *zap.Logger
-	cfg     *ZLogConfig
+	loggers map[string]*zap.Logger
+	cfgs    map[string]*ZLogConfig
 	options []zap.Option
+
+	lock        sync.Mutex
+	usedLoggers map[string]*zap.Logger
 
 	prefix string
 }
 
 // =========================================================== 构造方法 ===========================================================
 
-func NewZLog(config *ZLogConfig, options ...zap.Option) IZLog {
-	return newZLog(config, options...)
+func NewZLog(configs []*ZLogConfig, options ...zap.Option) IZLog {
+	return newZLog(configs, options...)
 }
 
-func newZLog(config *ZLogConfig, options ...zap.Option) *zLog {
-	var logger *zap.Logger
+func newZLog(configs []*ZLogConfig, options ...zap.Option) *zLog {
+	cfgs := make(map[string]*ZLogConfig)
+	loggers := make(map[string]*zap.Logger)
+	usedLoggers := make(map[string]*zap.Logger, 0)
+	for _, config := range configs {
+		var logger *zap.Logger
 
-	var err error
-	config.LogFile, err = filepath.Abs(config.LogFile)
-	if err != nil {
-		log.Panicf("获取日志文件绝对路径失败：%v\n", err.Error())
+		var err error
+		config.LogFile, err = filepath.Abs(config.LogFile)
+		if err != nil {
+			log.Panicf("获取日志文件绝对路径失败：%v\n", err.Error())
+		}
+
+		if strings.Contains(config.LogMode, logModeFile) && strings.Contains(config.LogMode, logModeStdout) {
+			logger = newZLogWithFileAndConsole(config, options...)
+		} else if config.LogMode == logModeFile {
+			logger = newZLogWithFile(config, options...)
+		} else {
+			logger = newZLogWithConsole(config, options...)
+		}
+		cfgs[config.Name] = config
+		loggers[config.Name] = logger
+		if config.Default {
+			usedLoggers[config.Name] = logger
+		}
 	}
 
-	if strings.Contains(config.LogMode, logModeFile) && strings.Contains(config.LogMode, logModeStdout) {
-		logger = newZLogWithFileAndConsole(config, options...)
-	} else if config.LogMode == logModeFile {
-		logger = newZLogWithFile(config, options...)
-	} else {
-		logger = newZLogWithConsole(config, options...)
+	if len(usedLoggers) == 0 {
+		// use first logger as default
+		cfgs[configs[0].Name].Default = true
+		usedLoggers[configs[0].Name] = loggers[configs[0].Name]
 	}
 
 	return &zLog{
-		logger:  logger,
-		cfg:     config,
-		options: options,
+		loggers:     loggers,
+		cfgs:        cfgs,
+		usedLoggers: usedLoggers,
+		options:     options,
 	}
 }
 
@@ -193,49 +219,70 @@ func newZLogWithFileAndConsole(config *ZLogConfig, options ...zap.Option) (logge
 
 	core := zapcore.NewTee(consoleCore.Core(), fileCore)
 	logger = zap.New(core)
+
 	return
 }
 
 // =========================================================== 接口方法 ===========================================================
 
 func (z *zLog) Debug(msg string, fields ...zapcore.Field) {
-	z.logger.Debug(z.withPrefix(msg), fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Debug(z.withPrefix(msg), fields...)
+	})
 }
 
 func (z *zLog) Debugf(template string, args ...interface{}) {
-	z.logger.Sugar().Debugf(z.withPrefix(template), args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Debugf(z.withPrefix(template), args...)
+	})
 }
 
 func (z *zLog) Info(msg string, fields ...zapcore.Field) {
-	z.logger.Info(z.withPrefix(msg), fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Info(z.withPrefix(msg), fields...)
+	})
 }
 
 func (z *zLog) Infof(template string, args ...interface{}) {
-	z.logger.Sugar().Infof(z.withPrefix(template), args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Infof(z.withPrefix(template), args...)
+	})
 }
 
 func (z *zLog) Warn(msg string, fields ...zapcore.Field) {
-	z.logger.Warn(z.withPrefix(msg), fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Warn(z.withPrefix(msg), fields...)
+	})
 }
 
 func (z *zLog) Warnf(template string, args ...interface{}) {
-	z.logger.Sugar().Warnf(z.withPrefix(template), args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Warnf(z.withPrefix(template), args...)
+	})
 }
 
 func (z *zLog) Error(msg string, fields ...zapcore.Field) {
-	z.logger.Error(z.withPrefix(msg), fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Error(z.withPrefix(msg), fields...)
+	})
 }
 
 func (z *zLog) Errorf(template string, args ...interface{}) {
-	z.logger.Sugar().Errorf(z.withPrefix(template), args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Errorf(z.withPrefix(template), args...)
+	})
 }
 
 func (z *zLog) Fatal(msg string, fields ...zapcore.Field) {
-	z.logger.Fatal(z.withPrefix(msg), fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Fatal(z.withPrefix(msg), fields...)
+	})
 }
 
 func (z *zLog) Fatalf(template string, args ...interface{}) {
-	z.logger.Sugar().Fatalf(z.withPrefix(template), args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Fatalf(z.withPrefix(template), args...)
+	})
 }
 
 // =========================================================== 带链路追踪的接口方法 ===========================================================
@@ -244,104 +291,144 @@ func (z *zLog) DebugWithTrace(ctx context.Context, msg string, fields ...zapcore
 	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Debug(msg, fields...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Debug(msg, fields...)
+		})
 		return
 	}
-	z.logger.Debug(msg, fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Debug(msg, fields...)
+	})
 }
 
 func (z *zLog) DebugfWithTrace(ctx context.Context, template string, args ...interface{}) {
 	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Sugar().Debugf(template, args...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Sugar().Debugf(template, args...)
+		})
 		return
 	}
-	z.logger.Sugar().Debugf(template, args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Debugf(template, args...)
+	})
 }
 
 func (z *zLog) InfoWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
 	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Info(msg, fields...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Info(msg, fields...)
+		})
 		return
 	}
-	z.logger.Info(msg, fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Info(msg, fields...)
+	})
 }
 
 func (z *zLog) InfofWithTrace(ctx context.Context, template string, args ...interface{}) {
 	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Sugar().Infof(template, args...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Sugar().Infof(template, args...)
+		})
 		return
 	}
-	z.logger.Sugar().Infof(template, args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Infof(template, args...)
+	})
 }
 
 func (z *zLog) WarnWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
 	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Warn(msg, fields...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Warn(msg, fields...)
+		})
 		return
 	}
-	z.logger.Warn(msg, fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Warn(msg, fields...)
+	})
 }
 
 func (z *zLog) WarnfWithTrace(ctx context.Context, template string, args ...interface{}) {
 	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Sugar().Warnf(template, args...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Sugar().Warnf(template, args...)
+		})
 		return
 	}
-	z.logger.Sugar().Warnf(template, args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Warnf(template, args...)
+	})
 }
 
 func (z *zLog) ErrorWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
 	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Error(msg, fields...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Error(msg, fields...)
+		})
 		return
 	}
-	z.logger.Error(msg, fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Error(msg, fields...)
+	})
 }
 
 func (z *zLog) ErrorfWithTrace(ctx context.Context, template string, args ...interface{}) {
 	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Sugar().Errorf(template, args...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Sugar().Errorf(template, args...)
+		})
 		return
 	}
-	z.logger.Sugar().Errorf(template, args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Errorf(template, args...)
+	})
 }
 
 func (z *zLog) FatalWithTrace(ctx context.Context, msg string, fields ...zapcore.Field) {
 	msg = z.withPrefix(msg)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Fatal(msg, fields...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Fatal(msg, fields...)
+		})
 		return
 	}
-	z.logger.Fatal(msg, fields...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Fatal(msg, fields...)
+	})
 }
 
 func (z *zLog) FatalfWithTrace(ctx context.Context, template string, args ...interface{}) {
 	template = z.withPrefix(template)
 	opt := WithTrace(ctx)
 	if nz, err := opt(z); err == nil {
-		nz.logger.Sugar().Fatalf(template, args...)
+		nz.withName(func(logger *zap.Logger) {
+			logger.Sugar().Fatalf(template, args...)
+		})
 		return
 	}
-	z.logger.Sugar().Fatalf(template, args...)
+	z.withName(func(logger *zap.Logger) {
+		logger.Sugar().Fatalf(template, args...)
+	})
 }
 
-func (z *zLog) GetZCore() *zap.Logger {
-	return z.logger
+func (z *zLog) GetZCore(name string) *zap.Logger {
+	return z.loggers[name]
 }
 
 // =========================================================== 带前缀打印的接口方法 ===========================================================
@@ -351,7 +438,49 @@ func (z *zLog) WithPrefix(prefix string) IZLog {
 	return z
 }
 
+// 使用指定日志记录器
+func (z *zLog) WithName(names ...string) IZLog {
+	z.lock.Lock()
+	defer z.lock.Unlock()
+
+	cfgs := make([]*ZLogConfig, 0)
+	for _, cfg := range z.cfgs {
+		cfgs = append(cfgs, cfg)
+	}
+
+	newZlog := newZLog(cfgs, z.options...)
+	usedLoggers := make(map[string]*zap.Logger, 0)
+	for _, name := range names {
+		if logger, ok := z.loggers[name]; ok {
+			usedLoggers[name] = logger
+		}
+	}
+	newZlog.usedLoggers = usedLoggers
+
+	return newZlog
+}
+
 // =========================================================== 私有方法 ===========================================================
+
+func (z *zLog) withName(f func(logger *zap.Logger)) {
+	z.lock.Lock()
+	defer z.lock.Unlock()
+
+	for _, logger := range z.usedLoggers {
+		f(logger)
+	}
+
+	z.resetUsedLogger()
+}
+
+func (z *zLog) resetUsedLogger() {
+	z.usedLoggers = make(map[string]*zap.Logger, 0)
+	for name, config := range z.cfgs {
+		if config.Default {
+			z.usedLoggers[name] = z.loggers[name]
+		}
+	}
+}
 
 func (z *zLog) withPrefix(original string) string {
 	if z.prefix != "" {

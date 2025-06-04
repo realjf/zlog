@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 18:04:40                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/05/30 09:52:24                                        #
+// # Last Modified: 2025/06/05 00:42:50                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -20,23 +20,52 @@ import (
 )
 
 func TestZapLog(t *testing.T) {
-	zlog.InitZLog(&zlog.ZLogConfig{
-		Compress: true,
-		LogMode:  "file|console",
-		Encoding: "json",
-		LogFile:  "./logs/zlog.log",
+	zlog.InitZLog([]*zlog.ZLogConfig{
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog.log",
+		},
 	})
 	zlog.ZLog().Infof("hello %s", "realjf")
+}
+
+func TestZapLogWithName(t *testing.T) {
+	zlog.InitZLog([]*zlog.ZLogConfig{
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog.log",
+			Name:     "zlog",
+			Default:  true,
+		},
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog2.log",
+			Name:     "zlog2",
+			Default:  false,
+		},
+	})
+	zlog.ZLog().Infof("hello %s", "realjf")
+	zlog.ZLog().WithName("zlog2").Infof("hello %s", "realjf2")
+	go zlog.ZLog().WithName("zlog2").Infof("hello %s", "realjf3")
+	zlog.ZLog().Infof("hello %s", "realjf4")
 }
 
 func TestZapLogWithTrace(t *testing.T) {
 	tc := trace.NewTraceContext()
 	ctx := trace.WithTraceContext(context.Background(), tc)
-	zlog.InitZLog(&zlog.ZLogConfig{
-		Compress: true,
-		LogMode:  "file|console",
-		Encoding: "json",
-		LogFile:  "./logs/zlog.log",
+	zlog.InitZLog([]*zlog.ZLogConfig{
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog.log",
+		},
 	})
 	zlog.ZLog().InfofWithTrace(ctx, "hello %s", "realjf")
 
@@ -48,11 +77,13 @@ func TestZapLogWithTrace(t *testing.T) {
 }
 
 func TestWithPrefix(t *testing.T) {
-	zlog.InitZLog(&zlog.ZLogConfig{
-		Compress: true,
-		LogMode:  "file|console",
-		Encoding: "json",
-		LogFile:  "./logs/zlog.log",
+	zlog.InitZLog([]*zlog.ZLogConfig{
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog.log",
+		},
 	})
 	zlog.ZLog().WithPrefix("[test]").Infof("hello %s", "realjf")
 }
