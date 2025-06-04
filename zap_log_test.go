@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 18:04:40                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/06/05 00:42:50                                        #
+// # Last Modified: 2025/06/05 07:47:37                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -86,4 +86,28 @@ func TestWithPrefix(t *testing.T) {
 		},
 	})
 	zlog.ZLog().WithPrefix("[test]").Infof("hello %s", "realjf")
+}
+
+func TestWithPrefix2(t *testing.T) {
+	zlog.InitZLog([]*zlog.ZLogConfig{
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog.log",
+			Name:     "zlog",
+			Default:  true,
+		},
+		{
+			Compress: true,
+			LogMode:  "file|console",
+			Encoding: "json",
+			LogFile:  "./logs/zlog2.log",
+			Name:     "zlog2",
+			Default:  false,
+		},
+	})
+	zlog.ZLog().WithPrefix("[test]").Infof("hello %s", "realjf")
+	go zlog.ZLog().WithPrefix("[test2]").Infof("hello %s", "realjf2")
+	zlog.ZLog().WithPrefix("[test3]").Infof("hello %s", "realjf3")
 }

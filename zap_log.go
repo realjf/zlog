@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/06/05 01:01:55                                        #
+// # Last Modified: 2025/06/05 07:49:16                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -434,8 +434,17 @@ func (z *zLog) GetZCore(name string) *zap.Logger {
 // =========================================================== 带前缀打印的接口方法 ===========================================================
 
 func (z *zLog) WithPrefix(prefix string) IZLog {
-	z.prefix = prefix
-	return z
+	z.lock.Lock()
+	defer z.lock.Unlock()
+
+	cfgs := make([]*ZLogConfig, 0)
+	for _, cfg := range z.cfgs {
+		cfgs = append(cfgs, cfg)
+	}
+
+	newZlog := newZLog(cfgs, z.options...)
+	newZlog.prefix = prefix
+	return newZlog
 }
 
 // 使用指定日志记录器
