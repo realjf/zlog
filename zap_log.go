@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/06/10 10:46:44                                        #
+// # Last Modified: 2025/06/10 12:53:51                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -181,7 +181,7 @@ func newZLogWithConsole(config *ZLogConfig, options ...zap.Option) (logger *zap.
 
 func newZLogWithFile(config *ZLogConfig, options ...zap.Option) (logger *zap.Logger) {
 	core := newFileCore(config, options...)
-	logger = zap.New(core)
+	logger = zap.New(core, zap.AddCaller(), zap.AddStacktrace(config.Level.toZapLevel()))
 	return
 }
 
@@ -220,7 +220,7 @@ func newZLogWithFileAndConsole(config *ZLogConfig, options ...zap.Option) (logge
 	fileCore := newFileCore(config, options...)
 
 	core := zapcore.NewTee(consoleCore.Core(), fileCore)
-	logger = zap.New(core)
+	logger = zap.New(core, zap.AddCaller(), zap.AddStacktrace(config.Level.toZapLevel()))
 
 	return
 }
@@ -505,6 +505,10 @@ func newEncoderConfig() zapcore.EncoderConfig {
 	encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 	}
-	encoderConfig.CallerKey = ""
+	encoderConfig.StacktraceKey = "stacktrace"
+	encoderConfig.CallerKey = "caller"
+	encoderConfig.EncodeCaller = func(ec zapcore.EntryCaller, pae zapcore.PrimitiveArrayEncoder) {
+
+	}
 	return encoderConfig
 }
