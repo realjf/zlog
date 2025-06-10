@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/06/05 07:49:16                                        #
+// # Last Modified: 2025/06/10 10:46:44                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -89,15 +89,16 @@ func InitZLog(configs []*ZLogConfig, options ...zap.Option) {
 // =========================================================== 结构体 ===========================================================
 
 type ZLogConfig struct {
-	Level    LogLevel `yaml:"level"`    // 日志级别： debug|info|warn|error|fatal
-	LogMode  string   `yaml:"log_mode"` // 日志模式 console|file
-	MaxSize  int      `yaml:"max_size"` // 单日志文件最大字节/M
-	MaxAge   int      `yaml:"max_age"`  // 日志文件最大存活天数
-	Compress bool     `yaml:"compress"` // 是否启用压缩
-	Encoding string   `yaml:"encoding"` // 日志编码 console|json
-	LogFile  string   `yaml:"log_file"` // 日志文件路径
-	Name     string   `yaml:"name"`     // 日志名称
-	Default  bool     `yaml:"default"`  // 默认日志记录器
+	Level      LogLevel `yaml:"level"`       // 日志级别： debug|info|warn|error|fatal
+	LogMode    string   `yaml:"log_mode"`    // 日志模式 console|file
+	MaxSize    int      `yaml:"max_size"`    // 单日志文件最大字节/M
+	MaxAge     int      `yaml:"max_age"`     // 日志文件最大存活天数
+	MaxBackups int      `yaml:"max_backups"` // 日志文件最大数
+	Compress   bool     `yaml:"compress"`    // 是否启用压缩
+	Encoding   string   `yaml:"encoding"`    // 日志编码 console|json
+	LogFile    string   `yaml:"log_file"`    // 日志文件路径
+	Name       string   `yaml:"name"`        // 日志名称
+	Default    bool     `yaml:"default"`     // 默认日志记录器
 }
 
 type zLog struct {
@@ -197,11 +198,12 @@ func newFileCore(config *ZLogConfig, options ...zap.Option) zapcore.Core {
 	}
 	// filename := filepath.Base(config.LogFile)
 	hook := lumberjack.Logger{
-		Filename:  config.LogFile,
-		MaxSize:   config.MaxSize,
-		MaxAge:    config.MaxAge,
-		Compress:  config.Compress,
-		LocalTime: true,
+		Filename:   config.LogFile,
+		MaxSize:    config.MaxSize,
+		MaxAge:     config.MaxAge,
+		MaxBackups: config.MaxBackups,
+		Compress:   config.Compress,
+		LocalTime:  true,
 	}
 	var encoder zapcore.Encoder
 	if config.Encoding == logEncodingJson {
