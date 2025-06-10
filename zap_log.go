@@ -4,7 +4,7 @@
 // # Created Date: 2024/10/08 15:18:55                                         #
 // # Author: realjf                                                            #
 // # -----                                                                     #
-// # Last Modified: 2025/06/10 12:53:51                                        #
+// # Last Modified: 2025/06/10 20:36:33                                        #
 // # Modified By: realjf                                                       #
 // # -----                                                                     #
 // #                                                                           #
@@ -30,6 +30,7 @@ import (
 const (
 	logMaxSize         = 500
 	logMaxAge          = 30
+	logMaxBackups      = 1000
 	logEncodingConsole = "console"
 	logEncodingJson    = "json"
 	logModeFile        = "file"
@@ -195,6 +196,9 @@ func newFileCore(config *ZLogConfig, options ...zap.Option) zapcore.Core {
 	}
 	if config.MaxSize <= 0 {
 		config.MaxSize = logMaxSize
+	}
+	if config.MaxBackups <= 0 {
+		config.MaxBackups = logMaxBackups
 	}
 	// filename := filepath.Base(config.LogFile)
 	hook := lumberjack.Logger{
